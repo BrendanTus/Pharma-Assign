@@ -334,15 +334,15 @@ async function tool_get_catalogue(){
 }
 
 async function tool_get_drug_info(drugName){
-  const searchUrl = `https://rxnav.nlm.nih.gov/REST/rxcui.json?name=${encodeURIComponent(drugName)}`;
+  const searchUrl = `https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=${encodeURIComponent(drugName)}&maxEntries=1`;
   const res = await fetch(searchUrl);
   if (!res.ok) throw new Error(`RxNorm fetch failed: ${res.status}`);
   const data = await res.json();
-  const ids = data?.idGroup?.idList;
-  if (!ids || !ids.length){
+  const candidate = data?.approximateGroup?.candidate?.[0];
+  if (!candidate){
     return { fetched_at: new Date().toISOString(), query: drugName, found: false };
   }
-  const rxcui = ids[0];
+  const rxcui = candidate.rxcui;
   const propRes = await fetch(`https://rxnav.nlm.nih.gov/REST/rxcui/${rxcui}/properties.json`);
   const propData = propRes.ok ? await propRes.json() : null;
   return {
@@ -350,6 +350,7 @@ async function tool_get_drug_info(drugName){
     query: drugName,
     found: true,
     rxcui,
+    match_score: candidate.score,
     properties: propData?.properties || null
   };
 }
